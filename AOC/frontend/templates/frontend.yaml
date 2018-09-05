@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "fullname" . }}
+  namespace: {{ .Values.namespace }}
+spec:
+  ports:
+  - name: "http"
+    port: {{ .Values.HttpPort }}
+    targetPort: {{ .Values.HttpPort }}
+  - name: "https"
+    port: {{ .Values.HttpsPort }}
+    targetPort: {{ .Values.HttpsPort }}
+  - name: "8081"
+    port: {{ .Values.8081Port }}
+    targetPort: {{ .Values.8081Port }}
+  selector:
+    app: {{ template "name" . }}
+status:
+  loadBalancer: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "frontend.fullname" . }}
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.frontendReplicaCount }}
+  selector:
+     matchLabels:
+        app: {{ template "name" . }}
+  strategy:
+    type: {{ .Values.frontend.DeploymentStrategy }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+      - env:
+        - name: ALERTS_SERVICE_HOST
+          value: alerts-service
+        - name: ALERTS_SERVICE_PORT
+          value: {{ .Values.env.ALERTS_SERVICE_PORT }}
+        - name: API_SERVER_HOST
+          value: stream-processor
+        - name: BACKUPS_HOST
+          value: backups
+        - name: HTTPS_REMOTE_PORT
+          value: {{ .Values.env.HTTPS_REMOTE_PORT }}
+        - name: HTTP_LOCAL_PORT
+          value: {{ .Values.env.HTTP_LOCAL_PORT }}
+        - name: LICENSE_MANAGER_SERVICE_HOST
+          value: license-manager
+        - name: NODEJS_ENV
+          value: {{ .Values.env.NODEJS_ENV }}
+        - name: PRODUCT_FLAVOR
+          value: {{ .Values.env.PRODUCT_FLAVOR }}
+        - name: REDIS_HOST
+          value: redis.epoch.svc.cluster.local
+        - name: REDIS_PORT
+          value: {{ .Values.env.REDIS_PORT }}
+        - name: SUPERUSER_HOST
+          value: superuser
+        - name: SUPERUSER_PORT
+          value: {{ .Values.env.SUPERUSER_PORT }}
+        - name: TIME_SERIES_ENDPOINT_HOST
+          value: time-series-query-service
+        - name: TIME_SERIES_ENDPOINT_PORT
+          value: {{ .Values.env.TIME_SERIES_ENDPOINT_PORT }}
+        - name: TOPOLOGY_SERVICE_HOST
+          value: topology-service
+        - name: USER_PERSISTENCE_HOST
+          value: user-persistence.epoch.svc.cluster.local
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.version }}"
+        name: {{ .Values.frontend.name }}
+        ports:
+        - containerPort: {{ .Values.HttpPort }}
+        - containerPort: {{ .Values.HttpsPort }}
+        - containerPort: {{ .Values.8081Port }}
+        resources: {}
+      restartPolicy: {{ .Values.frontend.restartPolicy }}
+status: {}
